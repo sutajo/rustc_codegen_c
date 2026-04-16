@@ -832,16 +832,20 @@ impl<'a, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'tcx> {
         {
             let mut module = self.cx.module.borrow_mut();
             if let Some(func) = module.open_functions.get_mut(&self.current_fn) {
-                func.add_local_decl(format!(
-                    "_Alignas({}) uint8_t {arr_name}[{}];",
-                    align.bytes(),
-                    size.bytes()
-                ));
-                // Initialize pointer in declaration so it's valid in ALL
-                // basic blocks (including cleanup blocks reached via unwind
-                // paths that don't go through the block where alloca was
-                // originally called).
-                func.add_local_decl(format!("void *{name} = (void *){arr_name};"));
+                if size.bytes() > 0 {
+                    func.add_local_decl(format!(
+                        "uint8_t {arr_name}[{}] __attribute__((aligned({align})));",
+                        size.bytes(),
+                        align = align.bytes(),
+                    ));
+                    // Initialize pointer in declaration so it's valid in ALL
+                    // basic blocks (including cleanup blocks reached via unwind
+                    // paths that don't go through the block where alloca was
+                    // originally called).
+                    func.add_local_decl(format!("void *{name} = (void *){arr_name};"));
+                } else {
+                    func.add_local_decl(format!("void *{name} = NULL;"));
+                }
             }
         }
         val

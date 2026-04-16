@@ -7,6 +7,23 @@
 #![feature(extern_types)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(try_blocks)]
+#![feature(rustc_private)]
+
+extern crate rustc_abi;
+extern crate rustc_ast;
+extern crate rustc_codegen_ssa;
+extern crate rustc_const_eval;
+extern crate rustc_data_structures;
+extern crate rustc_driver;
+extern crate rustc_errors;
+extern crate rustc_hir;
+extern crate rustc_metadata;
+extern crate rustc_middle;
+extern crate rustc_monomorphize;
+extern crate rustc_session;
+extern crate rustc_span;
+extern crate rustc_symbol_mangling;
+extern crate rustc_target;
 
 use std::any::Any;
 use std::path::PathBuf;
@@ -17,13 +34,14 @@ use rustc_codegen_ssa::back::archive::ArArchiveBuilderBuilder;
 use rustc_codegen_ssa::back::link::link_binary;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
-    CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
+    CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, ModuleKind, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::DiagCtxtHandle;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{self, WorkProduct, WorkProductId};
@@ -71,10 +89,6 @@ pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
 }
 
 impl CodegenBackend for CCodegenBackend {
-    fn locale_resource(&self) -> &'static str {
-        ""
-    }
-
     fn name(&self) -> &'static str {
         "c"
     }
@@ -263,7 +277,7 @@ impl ExtraBackendMethods for CCodegenBackend {
         _opt_level: rustc_session::config::OptLevel,
         _target_features: &[String],
     ) -> TargetMachineFactoryFn<Self> {
-        std::sync::Arc::new(|_config| Ok(()))
+        std::sync::Arc::new(|_config, _| ())
     }
 
     fn supports_parallel(&self) -> bool {
@@ -348,15 +362,17 @@ impl rustc_codegen_ssa::traits::ThinBufferMethods for CThinBuffer {
 impl WriteBackendMethods for CCodegenBackend {
     type Module = CModule;
     type TargetMachine = ();
-    type TargetMachineError = String;
     type ModuleBuffer = CModuleBuffer;
     type ThinData = ();
     type ThinBuffer = CThinBuffer;
 
     fn run_and_optimize_fat_lto(
-        _cgcx: &CodegenContext<Self>,
-        _exported_symbols_for_lto: &[String],
-        _each_linked_rlib_for_lto: &[PathBuf],
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
+        shared_emitter: &SharedEmitter,
+        tm_factory: TargetMachineFactoryFn<Self>,
+        exported_symbols_for_lto: &[String],
+        each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> ModuleCodegen<Self::Module> {
         // Fat LTO: generate C source for each module and concatenate.
@@ -392,9 +408,11 @@ impl WriteBackendMethods for CCodegenBackend {
     }
 
     fn run_thin_lto(
-        _cgcx: &CodegenContext<Self>,
-        _exported_symbols_for_lto: &[String],
-        _each_linked_rlib_for_lto: &[PathBuf],
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
+        dcx: DiagCtxtHandle<'_>,
+        exported_symbols_for_lto: &[String],
+        each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
@@ -431,17 +449,11 @@ impl WriteBackendMethods for CCodegenBackend {
         // No-op
     }
 
-    fn optimize(
-        _cgcx: &CodegenContext<Self>,
-        _dcx: DiagCtxtHandle<'_>,
-        _module: &mut ModuleCodegen<Self::Module>,
-        _config: &ModuleConfig,
-    ) {
-        // The C compiler handles optimization; nothing to do here.
-    }
-
     fn optimize_thin(
-        _cgcx: &CodegenContext<Self>,
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
+        shared_emitter: &SharedEmitter,
+        tm_factory: TargetMachineFactoryFn<Self>,
         thin: ThinModule<Self>,
     ) -> ModuleCodegen<Self::Module> {
         // For the C backend, "thin LTO" is a pass-through: reconstruct
@@ -459,15 +471,6 @@ impl WriteBackendMethods for CCodegenBackend {
             thin_lto_buffer: None,
         }
     }
-
-    fn codegen(
-        cgcx: &CodegenContext<Self>,
-        module: ModuleCodegen<Self::Module>,
-        config: &ModuleConfig,
-    ) -> CompiledModule {
-        write::codegen(cgcx, module, config)
-    }
-
     fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
         // Serialize the module so optimize_thin can reconstruct it
         let source = module.module_llvm.to_c_source();
@@ -479,5 +482,25 @@ impl WriteBackendMethods for CCodegenBackend {
         let source = module.module_llvm.to_c_source();
         let buffer = CModuleBuffer::new(&source);
         (name, buffer)
+    }
+
+    fn optimize(
+        cgcx: &CodegenContext,
+        prof: &rustc_data_structures::profiling::SelfProfilerRef,
+        shared_emitter: &rustc_codegen_ssa::back::write::SharedEmitter,
+        module: &mut ModuleCodegen<Self::Module>,
+        config: &ModuleConfig,
+    ) {
+        // The C compiler handles optimization; nothing to do here.
+    }
+
+    fn codegen(
+        cgcx: &CodegenContext,
+        _prof: &rustc_data_structures::profiling::SelfProfilerRef,
+        _shared_emitter: &rustc_codegen_ssa::back::write::SharedEmitter,
+        module: ModuleCodegen<Self::Module>,
+        config: &ModuleConfig,
+    ) -> CompiledModule {
+        write::codegen(cgcx, module, config)
     }
 }

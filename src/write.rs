@@ -14,7 +14,7 @@ use crate::module::CModule;
 
 /// Write a CModule to a `.c` file and compile it to an object file.
 pub(crate) fn codegen(
-    cgcx: &CodegenContext<CCodegenBackend>,
+    cgcx: &CodegenContext,
     module: rustc_codegen_ssa::ModuleCodegen<CModule>,
     _config: &ModuleConfig,
 ) -> CompiledModule {
@@ -127,11 +127,7 @@ fn resolve_out_dir(outputs: &rustc_session::config::OutputFilenames) -> Option<P
 ///
 /// If `RUSTC_CSOURCES_DIR` is set, C sources go there (shared across all
 /// crates); otherwise they go to `<out_dir>/csources/`.
-fn emit_csource_artifact(
-    cgcx: &CodegenContext<CCodegenBackend>,
-    c_source: &str,
-    module_name: &str,
-) {
+fn emit_csource_artifact(cgcx: &CodegenContext, c_source: &str, module_name: &str) {
     let csources_dir = if let Ok(dir) = std::env::var("RUSTC_CSOURCES_DIR") {
         PathBuf::from(dir)
     } else {
