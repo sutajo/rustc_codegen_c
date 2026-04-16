@@ -168,7 +168,7 @@ impl FunctionDef {
         }
 
         // Basic blocks
-        for (_, block) in &self.blocks {
+        for block in self.blocks.values() {
             let _ = writeln!(s, "{}:", block.label);
             let pp = PrettyPrinter::with_indent(&block.statements, 1);
             s.push_str(&pp.to_string());
@@ -354,11 +354,10 @@ impl CModule {
                 } else {
                     params.split(',').count()
                 };
-                if let Some(&def_count) = defined_sigs.get(name) {
-                    if def_count != decl_count {
+                if let Some(&def_count) = defined_sigs.get(name)
+                    && def_count != decl_count {
                         return Some(true); // conflicting signature
                     }
-                }
                 Some(false)
             })()
             .unwrap_or(false);

@@ -367,12 +367,12 @@ impl WriteBackendMethods for CCodegenBackend {
     type ThinBuffer = CThinBuffer;
 
     fn run_and_optimize_fat_lto(
-        cgcx: &CodegenContext,
-        prof: &SelfProfilerRef,
-        shared_emitter: &SharedEmitter,
-        tm_factory: TargetMachineFactoryFn<Self>,
-        exported_symbols_for_lto: &[String],
-        each_linked_rlib_for_lto: &[PathBuf],
+        _cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
+        _shared_emitter: &SharedEmitter,
+        _tm_factory: TargetMachineFactoryFn<Self>,
+        _exported_symbols_for_lto: &[String],
+        _each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> ModuleCodegen<Self::Module> {
         // Fat LTO: generate C source for each module and concatenate.
@@ -408,11 +408,11 @@ impl WriteBackendMethods for CCodegenBackend {
     }
 
     fn run_thin_lto(
-        cgcx: &CodegenContext,
-        prof: &SelfProfilerRef,
-        dcx: DiagCtxtHandle<'_>,
-        exported_symbols_for_lto: &[String],
-        each_linked_rlib_for_lto: &[PathBuf],
+        _cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
+        _dcx: DiagCtxtHandle<'_>,
+        _exported_symbols_for_lto: &[String],
+        _each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
@@ -450,10 +450,10 @@ impl WriteBackendMethods for CCodegenBackend {
     }
 
     fn optimize_thin(
-        cgcx: &CodegenContext,
-        prof: &SelfProfilerRef,
-        shared_emitter: &SharedEmitter,
-        tm_factory: TargetMachineFactoryFn<Self>,
+        _cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
+        _shared_emitter: &SharedEmitter,
+        _tm_factory: TargetMachineFactoryFn<Self>,
         thin: ThinModule<Self>,
     ) -> ModuleCodegen<Self::Module> {
         // For the C backend, "thin LTO" is a pass-through: reconstruct
@@ -485,11 +485,11 @@ impl WriteBackendMethods for CCodegenBackend {
     }
 
     fn optimize(
-        cgcx: &CodegenContext,
-        prof: &rustc_data_structures::profiling::SelfProfilerRef,
-        shared_emitter: &rustc_codegen_ssa::back::write::SharedEmitter,
-        module: &mut ModuleCodegen<Self::Module>,
-        config: &ModuleConfig,
+        _cgcx: &CodegenContext,
+        _prof: &rustc_data_structures::profiling::SelfProfilerRef,
+        _shared_emitter: &rustc_codegen_ssa::back::write::SharedEmitter,
+        _module: &mut ModuleCodegen<Self::Module>,
+        _config: &ModuleConfig,
     ) {
         // The C compiler handles optimization; nothing to do here.
     }

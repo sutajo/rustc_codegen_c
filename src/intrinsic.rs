@@ -273,7 +273,7 @@ impl<'a, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'tcx> {
                             vec![
                                 CExpr::var(&lhs),
                                 CExpr::var(&rhs),
-                                CExpr::lit(&size.to_string()),
+                                CExpr::lit(size.to_string()),
                             ],
                         ),
                         CBinOp::Eq,
@@ -314,7 +314,7 @@ impl<'a, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'tcx> {
                     vec![
                         CExpr::var(&p),
                         CExpr::lit("0"),
-                        CExpr::lit(&size.bytes().to_string()),
+                        CExpr::lit(size.bytes().to_string()),
                     ],
                 )));
                 Ok(())
@@ -1113,7 +1113,7 @@ fn codegen_simd_shuffle<'a, 'tcx>(
     for (i, &idx_val) in index_vals.iter().enumerate() {
         bx.emit(CStmt::assign(
             CExpr::raw(format!("{rn}.v[{i}]")),
-            CExpr::index(CExpr::var(&arr_name), CExpr::lit(&idx_val.to_string())),
+            CExpr::index(CExpr::var(&arr_name), CExpr::lit(idx_val.to_string())),
         ));
     }
 
@@ -1203,7 +1203,7 @@ fn codegen_carrying_mul_add<'a, 'tcx>(
         ));
     } else {
         let t = if signed { "int128_t" } else { "uint128_t" };
-        bx.emit(CStmt::raw(format!("{{ /* carrying_mul_add u128 */")));
+        bx.emit(CStmt::raw("{ /* carrying_mul_add u128 */".to_string()));
         bx.emit(CStmt::raw(format!("  uint64_t _a_lo = (uint64_t){a};")));
         bx.emit(CStmt::raw(format!(
             "  uint64_t _a_hi = (uint64_t)((uint128_t){a} >> 64);"
@@ -1212,31 +1212,15 @@ fn codegen_carrying_mul_add<'a, 'tcx>(
         bx.emit(CStmt::raw(format!(
             "  uint64_t _b_hi = (uint64_t)((uint128_t){b} >> 64);"
         )));
-        bx.emit(CStmt::raw(format!(
-            "  uint128_t _lo_lo = (uint128_t)_a_lo * _b_lo;"
-        )));
-        bx.emit(CStmt::raw(format!(
-            "  uint128_t _hi_lo = (uint128_t)_a_hi * _b_lo;"
-        )));
-        bx.emit(CStmt::raw(format!(
-            "  uint128_t _lo_hi = (uint128_t)_a_lo * _b_hi;"
-        )));
-        bx.emit(CStmt::raw(format!(
-            "  uint128_t _hi_hi = (uint128_t)_a_hi * _b_hi;"
-        )));
-        bx.emit(CStmt::raw(format!("  uint128_t _mid = _hi_lo + _lo_hi;")));
-        bx.emit(CStmt::raw(format!(
-            "  uint128_t _carry_mid = (_mid < _hi_lo) ? ((uint128_t)1 << 64) : 0;"
-        )));
-        bx.emit(CStmt::raw(format!(
-            "  uint128_t _low = _lo_lo + (_mid << 64);"
-        )));
-        bx.emit(CStmt::raw(format!(
-            "  uint128_t _carry_low = (_low < _lo_lo) ? 1 : 0;"
-        )));
-        bx.emit(CStmt::raw(format!(
-            "  uint128_t _high = _hi_hi + (_mid >> 64) + _carry_mid + _carry_low;"
-        )));
+        bx.emit(CStmt::raw("  uint128_t _lo_lo = (uint128_t)_a_lo * _b_lo;".to_string()));
+        bx.emit(CStmt::raw("  uint128_t _hi_lo = (uint128_t)_a_hi * _b_lo;".to_string()));
+        bx.emit(CStmt::raw("  uint128_t _lo_hi = (uint128_t)_a_lo * _b_hi;".to_string()));
+        bx.emit(CStmt::raw("  uint128_t _hi_hi = (uint128_t)_a_hi * _b_hi;".to_string()));
+        bx.emit(CStmt::raw("  uint128_t _mid = _hi_lo + _lo_hi;".to_string()));
+        bx.emit(CStmt::raw("  uint128_t _carry_mid = (_mid < _hi_lo) ? ((uint128_t)1 << 64) : 0;".to_string()));
+        bx.emit(CStmt::raw("  uint128_t _low = _lo_lo + (_mid << 64);".to_string()));
+        bx.emit(CStmt::raw("  uint128_t _carry_low = (_low < _lo_lo) ? 1 : 0;".to_string()));
+        bx.emit(CStmt::raw("  uint128_t _high = _hi_hi + (_mid >> 64) + _carry_mid + _carry_low;".to_string()));
         bx.emit(CStmt::raw(format!("  _low += (uint128_t){c};")));
         bx.emit(CStmt::raw(format!(
             "  if (_low < (uint128_t){c}) _high += 1;"
@@ -1250,7 +1234,7 @@ fn codegen_carrying_mul_add<'a, 'tcx>(
             "  *(({t} *)((char *){dest} + {})) = ({t})_high;",
             size.bytes()
         )));
-        bx.emit(CStmt::raw(format!("}}")));
+        bx.emit(CStmt::raw("}".to_string()));
     }
     Ok(())
 }

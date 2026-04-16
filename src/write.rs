@@ -9,7 +9,6 @@ use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig};
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_session::config::OutputFilenames;
 
-use crate::CCodegenBackend;
 use crate::module::CModule;
 
 /// Write a CModule to a `.c` file and compile it to an object file.
@@ -115,11 +114,10 @@ pub(crate) fn codegen(
 fn resolve_out_dir(outputs: &rustc_session::config::OutputFilenames) -> Option<PathBuf> {
     let out_ref = outputs.with_extension("");
     let mut out_dir = out_ref.parent()?.to_path_buf();
-    if out_dir.file_name().map_or(false, |n| n == "deps") {
-        if let Some(parent) = out_dir.parent() {
+    if out_dir.file_name().is_some_and(|n| n == "deps")
+        && let Some(parent) = out_dir.parent() {
             out_dir = parent.to_path_buf();
         }
-    }
     Some(out_dir)
 }
 

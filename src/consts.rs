@@ -674,7 +674,7 @@ impl<'tcx> StaticCodegenMethods for CodegenCx<'tcx> {
                     let module = self.module.borrow();
                     if !module.declared_extern_globals.contains(&c_name) {
                         drop(module);
-                        self.emit_static_struct_fwd_decl(&c_name, &sym, def_id, &tls);
+                        self.emit_static_struct_fwd_decl(&c_name, &sym, def_id, tls);
                     }
                 }
 

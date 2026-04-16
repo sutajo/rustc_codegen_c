@@ -204,11 +204,9 @@ pub(crate) fn cast_target_to_c_type(cx: &CodegenCx<'_>, target: &CastTarget) -> 
             .div_ceil(target.rest.unit.size.bytes())
     };
     let mut fields = Vec::new();
-    for prefix in target.prefix.iter() {
-        if let Some(reg) = prefix {
-            let bits = (reg.size.bytes() * 8) as u32;
-            fields.push(cx.intern_type(CTypeKind::Int { bits, signed: true }));
-        }
+    for reg in target.prefix.iter().flatten() {
+        let bits = (reg.size.bytes() * 8) as u32;
+        fields.push(cx.intern_type(CTypeKind::Int { bits, signed: true }));
     }
     for _ in 0..rest_count {
         fields.push(rest_unit_ty);

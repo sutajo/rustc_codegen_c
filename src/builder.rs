@@ -174,11 +174,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Get the block label.
     pub(crate) fn block_label(&self, bb: BasicBlockId) -> String {
         let module = self.cx.module.borrow();
-        if let Some(func) = module.open_functions.get(&self.current_fn) {
-            if let Some(block) = func.blocks.get(&bb.0) {
+        if let Some(func) = module.open_functions.get(&self.current_fn)
+            && let Some(block) = func.blocks.get(&bb.0) {
                 return block.label.clone();
             }
-        }
         format!("bb{}", bb.0)
     }
 }
@@ -2253,9 +2252,9 @@ impl<'a, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'tcx> {
                 // If the ABI returns a boolean as int8_t, convert back
                 // to _Bool so that `not` (and other boolean ops) see a
                 // _Bool value and use logical `!` instead of bitwise `~`.
-                if let Some(abi) = _fn_abi {
-                    if let rustc_abi::BackendRepr::Scalar(s) = abi.ret.layout.backend_repr {
-                        if s.is_bool() {
+                if let Some(abi) = _fn_abi
+                    && let rustc_abi::BackendRepr::Scalar(s) = abi.ret.layout.backend_repr
+                        && s.is_bool() {
                             let bool_ty = self.cx.intern_type(CTypeKind::Bool);
                             let v = self.cx.render_value(result);
                             return self.new_temp_with_stmt(
@@ -2263,8 +2262,6 @@ impl<'a, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'tcx> {
                                 CExpr::cast("_Bool".to_string(), CExpr::paren(CExpr::var(v))),
                             );
                         }
-                    }
-                }
                 result
             }
         }
@@ -2480,7 +2477,7 @@ impl<'a, 'tcx> AbiBuilderMethods for Builder<'a, 'tcx> {
             module
                 .open_functions
                 .get(&self.current_fn)
-                .map_or(false, |f| f.has_indirect_ret)
+                .is_some_and(|f| f.has_indirect_ret)
         };
 
         if has_indirect_ret && index == 0 {
@@ -2538,7 +2535,7 @@ impl<'a, 'tcx> AbiBuilderMethods for Builder<'a, 'tcx> {
                 module
                     .open_functions
                     .get(&self.current_fn)
-                    .map_or(false, |f| f.on_stack_params.contains(&c_index))
+                    .is_some_and(|f| f.on_stack_params.contains(&c_index))
             };
             if is_on_stack {
                 // on_stack params are declared as struct types (by value)

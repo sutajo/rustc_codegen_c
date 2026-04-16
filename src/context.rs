@@ -160,7 +160,7 @@ impl<'tcx> CodegenCx<'tcx> {
             // Same-CGU static with relocations: define the struct type and
             // use it for the forward declaration. This must match what
             // codegen_static will produce.
-            self.emit_static_struct_fwd_decl(c_name, original_name, def_id, &tls);
+            self.emit_static_struct_fwd_decl(c_name, original_name, def_id, tls);
         } else {
             self.module
                 .borrow_mut()
